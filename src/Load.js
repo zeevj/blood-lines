@@ -6,7 +6,7 @@ const Load = ({ handleUpload, loadHalfling, loadKennedy, loadShakespeare, loadTu
     <div id='load'>
       <div>
         <section className="title-area">
-          <h1>blood lines</h1>
+          <h1>MJ blood lines</h1>
           <p>a 3D visualizer for genealogical data</p>
         </section>
 
