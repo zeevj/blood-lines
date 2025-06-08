@@ -6,7 +6,7 @@ import SpriteText from "three-spritetext";
 import { forceCollide } from "d3-force-3d";
 import Hammer from 'hammerjs';
 
-const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLegend, setShowingLegend, showingSurnames, setShowingSurnames, isMobile, clearHighlights }) => {
+const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLegend, setShowingLegend, showingSurnames, setShowingSurnames, colorTheme, customLoveLineColor, customBloodLineColor, loveLineWeight, bloodLineWeight, loveLineType, bloodLineType, loveLineOpacity, bloodLineOpacity, isMobile, clearHighlights }) => {
 
   console.log(`d3Data`, d3Data);
 
@@ -16,6 +16,84 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   const justPinchedRef = useRef(false);
+
+  // COLOR THEMES //
+  const colorThemes = {
+    dark: {
+      background: '#010000',
+      accent: '#fc6767',
+      linkNormal: 'rgba(252, 103, 103, 0.3)',
+      linkRomantic: 'rgba(255, 215, 0, 0.5)',
+      linkMuted: 'rgba(167, 98, 98, 0.15)',
+      linkHighlighted: 'rgba(252, 103, 103, 0.6)',
+      linkFamilyMuted: 'rgba(252, 103, 103, 0.15)',
+      timeline: '#333333',
+      timeLabel: '#f8f8f8',
+      timeLabelSecondary: '#ccc'
+    },
+    light: {
+      background: '#f0f8ff',
+      accent: '#2c5aa0',
+      linkNormal: 'rgba(44, 90, 160, 0.4)',
+      linkRomantic: 'rgba(255, 140, 0, 0.6)',
+      linkMuted: 'rgba(100, 100, 100, 0.2)',
+      linkHighlighted: 'rgba(44, 90, 160, 0.7)',
+      linkFamilyMuted: 'rgba(44, 90, 160, 0.2)',
+      timeline: '#666666',
+      timeLabel: '#333333',
+      timeLabelSecondary: '#666666'
+    },
+    forest: {
+      background: '#0d1f0d',
+      accent: '#4a7c59',
+      linkNormal: 'rgba(74, 124, 89, 0.4)',
+      linkRomantic: 'rgba(255, 193, 7, 0.6)',
+      linkMuted: 'rgba(74, 124, 89, 0.15)',
+      linkHighlighted: 'rgba(74, 124, 89, 0.7)',
+      linkFamilyMuted: 'rgba(74, 124, 89, 0.2)',
+      timeline: '#4a7c59',
+      timeLabel: '#a8d5ba',
+      timeLabelSecondary: '#6b9080'
+    },
+    sunset: {
+      background: '#1a0d0d',
+      accent: '#ff6b35',
+      linkNormal: 'rgba(255, 107, 53, 0.4)',
+      linkRomantic: 'rgba(255, 215, 0, 0.6)',
+      linkMuted: 'rgba(255, 107, 53, 0.15)',
+      linkHighlighted: 'rgba(255, 107, 53, 0.7)',
+      linkFamilyMuted: 'rgba(255, 107, 53, 0.2)',
+      timeline: '#ff6b35',
+      timeLabel: '#ffa07a',
+      timeLabelSecondary: '#cd853f'
+    },
+    ocean: {
+      background: '#0a1628',
+      accent: '#20b2aa',
+      linkNormal: 'rgba(32, 178, 170, 0.4)',
+      linkRomantic: 'rgba(255, 215, 0, 0.6)',
+      linkMuted: 'rgba(32, 178, 170, 0.15)',
+      linkHighlighted: 'rgba(32, 178, 170, 0.7)',
+      linkFamilyMuted: 'rgba(32, 178, 170, 0.2)',
+      timeline: '#20b2aa',
+      timeLabel: '#48d1cc',
+      timeLabelSecondary: '#5f9ea0'
+    },
+    purple: {
+      background: '#1a0d1a',
+      accent: '#9370db',
+      linkNormal: 'rgba(147, 112, 219, 0.4)',
+      linkRomantic: 'rgba(255, 215, 0, 0.6)',
+      linkMuted: 'rgba(147, 112, 219, 0.15)',
+      linkHighlighted: 'rgba(147, 112, 219, 0.7)',
+      linkFamilyMuted: 'rgba(147, 112, 219, 0.2)',
+      timeline: '#9370db',
+      timeLabel: '#dda0dd',
+      timeLabelSecondary: '#ba55d3'
+    }
+  };
+
+  const currentTheme = colorThemes[colorTheme] || colorThemes.dark;
 
   // DESIGN //
 
@@ -83,29 +161,107 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
     return obj;
   }, [highlights, highlightedFamily]);
 
-  // Link color
+  // Link color with opacity
   const getLinkColor = useCallback((link) => {
-    return highlights.links.length < 1
-      ? highlightedFamily
-        ? "rgba(252, 103, 103, 0.15)" // Highlighed family exists, mute all links
-        : link.sourceType != "CHIL" && link.targetType != "CHIL"
-        ? "rgba(255, 215, 0, 0.5)" // Romantic link
-        : "rgba(252, 103, 103, 0.3)" // Normal link
-      : highlights.links.indexOf(link.index) !== -1
-      ? link.sourceType != "CHIL" && link.targetType != "CHIL"
-        ? "rgba(255, 215, 0, 0.5)" // Romantic link
-        : "rgba(252, 103, 103, 0.6)" // Highlighted link
-      : "rgba(167, 98, 98, 0.15)"; // Muted link
-  }, [highlights, highlightedFamily]);
+    const isRomanticLink = link.sourceType != "CHIL" && link.targetType != "CHIL";
+    let baseColor;
+    let opacity;
+    
+    if (highlights.links.length < 1) {
+      if (highlightedFamily) {
+        baseColor = currentTheme.linkFamilyMuted;
+        opacity = 1;
+      } else {
+        if (isRomanticLink) {
+          baseColor = customLoveLineColor || currentTheme.linkRomantic;
+          opacity = loveLineOpacity;
+        } else {
+          baseColor = customBloodLineColor || currentTheme.linkNormal;
+          opacity = bloodLineOpacity;
+        }
+      }
+    } else {
+      if (highlights.links.indexOf(link.index) !== -1) {
+        if (isRomanticLink) {
+          baseColor = customLoveLineColor || currentTheme.linkRomantic;
+          opacity = loveLineOpacity;
+        } else {
+          baseColor = currentTheme.linkHighlighted;
+          opacity = bloodLineOpacity;
+        }
+      } else {
+        baseColor = currentTheme.linkMuted;
+        opacity = 1;
+      }
+    }
+    
+    // Convert color to include opacity
+    if (baseColor.startsWith('rgba')) {
+      // Replace the alpha value in rgba
+      return baseColor.replace(/[\d\.]+\)$/, `${opacity})`);
+    } else if (baseColor.startsWith('rgb')) {
+      // Convert rgb to rgba
+      return baseColor.replace(')', `, ${opacity})`).replace('rgb', 'rgba');
+    } else if (baseColor.startsWith('#')) {
+      // Convert hex to rgba
+      const hex = baseColor.replace('#', '');
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+    
+    return baseColor;
+  }, [highlights, highlightedFamily, currentTheme, customLoveLineColor, customBloodLineColor, loveLineOpacity, bloodLineOpacity]);
 
   // Link width
   const getLinkWidth = useCallback((link) => {
+    const isRomanticLink = link.sourceType != "CHIL" && link.targetType != "CHIL";
+    
     if (highlights.links.indexOf(link.index) !== -1) {
-      return 1.5;
+      return isRomanticLink ? loveLineWeight * 1.2 : bloodLineWeight * 1.2; // Slightly thicker when highlighted
     } else {
-      return 1.5;
+      return isRomanticLink ? loveLineWeight : bloodLineWeight;
     }
-  }, [highlights]);
+  }, [highlights, loveLineWeight, bloodLineWeight]);
+
+  // Custom link rendering for line types
+  const getLinkThreeObject = useCallback((link) => {
+    const isRomanticLink = link.sourceType != "CHIL" && link.targetType != "CHIL";
+    const lineType = isRomanticLink ? loveLineType : bloodLineType;
+    
+    if (lineType === 'solid') {
+      return null; // Use default rendering
+    }
+    
+    // Create custom dashed/dotted line
+    const start = new THREE.Vector3(link.source.x, link.source.y, link.source.z);
+    const end = new THREE.Vector3(link.target.x, link.target.y, link.target.z);
+    
+    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+    
+    let material;
+    if (lineType === 'dashed') {
+      material = new THREE.LineDashedMaterial({
+        color: getLinkColor(link),
+        linewidth: getLinkWidth(link),
+        dashSize: 3,
+        gapSize: 1,
+      });
+    } else if (lineType === 'dotted') {
+      material = new THREE.LineDashedMaterial({
+        color: getLinkColor(link),
+        linewidth: getLinkWidth(link),
+        dashSize: 0.5,
+        gapSize: 0.5,
+      });
+    }
+    
+    const line = new THREE.Line(geometry, material);
+    line.computeLineDistances(); // Required for dashed lines
+    
+    return line;
+  }, [loveLineType, bloodLineType, getLinkColor, getLinkWidth]);
 
   // Link particles
   const getLinkParticleWidth = useCallback((link) => {
@@ -133,9 +289,9 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
       const highestY = Math.max.apply(Math, yRange);
       const lowestY = Math.min.apply(Math, yRange);
 
-      // Create a blue LineBasicMaterial
+      // Create a timeline material with theme color
       var material = new THREE.LineBasicMaterial({
-        color: 0x333333,
+        color: currentTheme.timeline,
         linewidth: 2,
       });
 
@@ -192,7 +348,7 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
       let earliestTimeLabel = earliestYOB
         ? new SpriteText(earliestYOB)
         : new SpriteText("Earlier");
-      earliestTimeLabel.color = "#f8f8f8";
+      earliestTimeLabel.color = currentTheme.timeLabel;
       earliestTimeLabel.fontFace = "Helvetica";
       earliestTimeLabel.fontWeight = 800;
       earliestTimeLabel.textHeight = 25;
@@ -213,7 +369,7 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
       let latestTimeLabel = latestYOB
         ? new SpriteText(latestYOB)
         : new SpriteText("Later");
-      latestTimeLabel.color = "#f8f8f8";
+      latestTimeLabel.color = currentTheme.timeLabel;
       latestTimeLabel.fontFace = "Helvetica";
       latestTimeLabel.fontWeight = 800;
       latestTimeLabel.textHeight = 25;
@@ -232,7 +388,7 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
       half.position.y = halfY;
 
       let halfTimeLabel = new SpriteText(halfYOB);
-      halfTimeLabel.color = "#ccc";
+      halfTimeLabel.color = currentTheme.timeLabelSecondary;
       halfTimeLabel.fontFace = "Helvetica";
       halfTimeLabel.fontWeight = 800;
       halfTimeLabel.textHeight = 15;
@@ -251,7 +407,7 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
       quarter.position.y = quarterY;
 
       let quarterTimeLabel = new SpriteText(quarterYOB);
-      quarterTimeLabel.color = "#ccc";
+      quarterTimeLabel.color = currentTheme.timeLabelSecondary;
       quarterTimeLabel.fontFace = "Helvetica";
       quarterTimeLabel.fontWeight = 800;
       quarterTimeLabel.textHeight = 15;
@@ -270,7 +426,7 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
       threeQuarter.position.y = threeQuarterY;
 
       let threeQuarterTimeLabel = new SpriteText(threeQuarterYOB);
-      threeQuarterTimeLabel.color = "#ccc";
+      threeQuarterTimeLabel.color = currentTheme.timeLabelSecondary;
       threeQuarterTimeLabel.fontFace = "Helvetica";
       threeQuarterTimeLabel.fontWeight = 800;
       threeQuarterTimeLabel.textHeight = 15;
@@ -288,7 +444,7 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
     fgRef.current.controls().dampingFactor = 0.3;
     fgRef.current.controls().rotateSpeed = 0.8;
     fgRef.current.controls().screenSpacePanning = true;
-  }, []);
+  }, [currentTheme]);
 
 
   // LOGIC //
@@ -446,7 +602,7 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
       // Display
       width={window.innerWidth}
       height={window.innerHeight}
-      backgroundColor={"#010000"}
+      backgroundColor={currentTheme.background}
       showNavInfo={false}
       // Controls
       controlType={"orbit"}
@@ -469,6 +625,7 @@ const Graph = ({ d3Data, highlights, setHighlights, highlightedFamily, showingLe
       linkColor={getLinkColor}
       linkOpacity={1}
       linkWidth={getLinkWidth}
+      linkThreeObject={getLinkThreeObject}
       linkDirectionalParticles={(link) =>
         link.sourceType != "CHIL" &&
         link.targetType == "CHIL" &&

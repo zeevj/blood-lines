@@ -1,5 +1,5 @@
 // Modules
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { parse, d3ize } from 'gedcom-d3';
 
@@ -38,7 +38,56 @@ const App = () => {
   const [showingLegend, setShowingLegend] = useState(false);
   const [showingSurnames, setShowingSurnames] = useState(false);
   const [highlights, setHighlights] = useState({ node: null, family: [], links: [] });
+  
+  // Load saved settings from localStorage
+  const loadSavedSettings = () => {
+    try {
+      const saved = localStorage.getItem('bloodLinesSettings');
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      console.warn('Failed to load saved settings:', error);
+      return {};
+    }
+  };
+
+  const savedSettings = loadSavedSettings();
+  
+  const [colorTheme, setColorTheme] = useState(savedSettings.colorTheme || 'dark');
+  const [customLoveLineColor, setCustomLoveLineColor] = useState(savedSettings.customLoveLineColor || null);
+  const [customBloodLineColor, setCustomBloodLineColor] = useState(savedSettings.customBloodLineColor || null);
+  const [loveLineWeight, setLoveLineWeight] = useState(savedSettings.loveLineWeight || 1.5);
+  const [bloodLineWeight, setBloodLineWeight] = useState(savedSettings.bloodLineWeight || 1.5);
+  const [loveLineType, setLoveLineType] = useState(savedSettings.loveLineType || 'solid');
+  const [bloodLineType, setBloodLineType] = useState(savedSettings.bloodLineType || 'solid');
+  const [loveLineOpacity, setLoveLineOpacity] = useState(savedSettings.loveLineOpacity || 0.8);
+  const [bloodLineOpacity, setBloodLineOpacity] = useState(savedSettings.bloodLineOpacity || 0.8);
+  
   const isMobile = window.innerWidth < 769;
+
+  // Save settings to localStorage whenever they change
+  const saveSettings = useCallback(() => {
+    const settings = {
+      colorTheme,
+      customLoveLineColor,
+      customBloodLineColor,
+      loveLineWeight,
+      bloodLineWeight,
+      loveLineType,
+      bloodLineType,
+      loveLineOpacity,
+      bloodLineOpacity
+    };
+    try {
+      localStorage.setItem('bloodLinesSettings', JSON.stringify(settings));
+    } catch (error) {
+      console.warn('Failed to save settings:', error);
+    }
+  }, [colorTheme, customLoveLineColor, customBloodLineColor, loveLineWeight, bloodLineWeight, loveLineType, bloodLineType, loveLineOpacity, bloodLineOpacity]);
+
+  // Save settings whenever they change
+  useEffect(() => {
+    saveSettings();
+  }, [saveSettings]);
 
   // Clear highlights
   const clearHighlights = () => {
@@ -107,6 +156,24 @@ const App = () => {
             setShowingLegend={setShowingLegend}
             showingSurnames={showingSurnames}
             setShowingSurnames={setShowingSurnames}
+            colorTheme={colorTheme}
+            setColorTheme={setColorTheme}
+            customLoveLineColor={customLoveLineColor}
+            setCustomLoveLineColor={setCustomLoveLineColor}
+            customBloodLineColor={customBloodLineColor}
+            setCustomBloodLineColor={setCustomBloodLineColor}
+            loveLineWeight={loveLineWeight}
+            setLoveLineWeight={setLoveLineWeight}
+            bloodLineWeight={bloodLineWeight}
+            setBloodLineWeight={setBloodLineWeight}
+            loveLineType={loveLineType}
+            setLoveLineType={setLoveLineType}
+            bloodLineType={bloodLineType}
+            setBloodLineType={setBloodLineType}
+            loveLineOpacity={loveLineOpacity}
+            setLoveLineOpacity={setLoveLineOpacity}
+            bloodLineOpacity={bloodLineOpacity}
+            setBloodLineOpacity={setBloodLineOpacity}
             isMobile={isMobile}
             clearHighlights={clearHighlights}
           />
@@ -120,6 +187,15 @@ const App = () => {
             setShowingLegend={setShowingLegend}
             showingSurnames={showingSurnames}
             setShowingSurnames={setShowingSurnames}
+            colorTheme={colorTheme}
+            customLoveLineColor={customLoveLineColor}
+            customBloodLineColor={customBloodLineColor}
+            loveLineWeight={loveLineWeight}
+            bloodLineWeight={bloodLineWeight}
+            loveLineType={loveLineType}
+            bloodLineType={bloodLineType}
+            loveLineOpacity={loveLineOpacity}
+            bloodLineOpacity={bloodLineOpacity}
             isMobile={isMobile}
             clearHighlights={clearHighlights}
           />
